@@ -1,0 +1,12 @@
+from app.models.user import User  # noqa: F401
+from app.models.room import Room  # noqa: F401
+from app.models.room_member import RoomMember  # noqa: F401
+from app.models.category import Category  # noqa: F401
+from app.models.expense import Expense  # noqa: F401
+from app.models.expense_participant import ExpenseParticipant  # noqa: F401
+from app.models.settlement import Settlement  # noqa: F401
+from app.models.recurring_expense import RecurringExpense  # noqa: F401
+from app.models.invitation import Invitation  # noqa: F401
+from app.models.payment_method import PaymentMethod  # noqa: F401
+from app.models.attachment import Attachment  # noqa: F401
+from app.models.audit_log import AuditLog  # noqa: F401

@@ -1,0 +1,41 @@
+# RoomFund - Root .env (never commit secrets)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.db
+*$py.class
+*.so
+.Python
+.env
+.venv/
+venv/
+.env.venv
+.pytest_cache/
+.coverage
+htmlcov/
+alembic/versions/
+
+# Node
+node_modules/
+.next/
+*.tsbuildinfo
+out/
+dist/
+build/
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Uploads
+uploads/

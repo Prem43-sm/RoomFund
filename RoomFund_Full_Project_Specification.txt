@@ -1,0 +1,2228 @@
+ROOMFUND — COMPLETE WEB APP BUILD SPECIFICATION
+====================================================
+
+PROJECT NAME
+------------
+RoomFund
+
+TAGLINE
+-------
+Shared-room expense management made simple, fair, and transparent.
+
+PROJECT PURPOSE
+---------------
+Build a production-ready web application for students, roommates, flatmates,
+PG residents, couples, families, and other people sharing a rented room/home.
+
+RoomFund must let users manage:
+
+1. Personal expenses
+2. Common/shared room expenses
+3. Roommate-wise contributions
+4. Equal expense splitting
+5. Custom/manual expense splitting
+6. Who-paid / who-owes calculations
+7. Settlements between roommates
+8. Daily, weekly, monthly, and yearly expense records
+9. Rent and recurring bills
+10. Expense categories
+11. Room-level financial summaries
+12. Personal financial summaries
+13. Complete historical records
+14. SQLite database persistence
+15. Backend/API hosted from GitHub
+16. Frontend deployable on Vercel
+17. Light mode + dark mode
+18. Responsive mobile/tablet/desktop UI
+19. Automated tests and database tests
+20. Proper validation, error handling, loading states, empty states, and security
+
+IMPORTANT PRODUCT PRINCIPLE
+---------------------------
+The application must clearly separate:
+
+A. PERSONAL EXPENSE
+   Only the selected user is responsible for the expense.
+
+B. COMMON EXPENSE
+   The expense belongs to the room/group and can be split among selected
+   roommates using equal or custom shares.
+
+C. SETTLEMENT
+   A payment made by one roommate to another to clear an outstanding balance.
+
+The application must never silently mix personal and common expenses.
+
+====================================================
+1. RECOMMENDED TECHNOLOGY STACK
+====================================================
+
+FRONTEND
+--------
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui or equivalent accessible component system
+- React Hook Form
+- Zod validation
+- TanStack Query for API/server-state management
+- Recharts or equivalent chart library
+- Lucide icons
+- Responsive-first design
+
+BACKEND
+-------
+Preferred:
+- Python
+- FastAPI
+- SQLAlchemy
+- Alembic
+- Pydantic
+- SQLite for initial/low-cost deployment
+- PostgreSQL-compatible architecture for future production scaling
+
+DATABASE
+--------
+Development/default:
+- SQLite
+
+Database requirements:
+- Foreign keys enabled
+- Proper indexes
+- UUID or secure unique identifiers
+- UTC timestamps
+- Decimal-safe monetary representation
+- Migration support through Alembic
+- No business-critical data stored only in frontend/localStorage
+
+REPOSITORIES
+------------
+Recommended separation:
+
+roomfund-frontend
+roomfund-backend
+
+The backend repository must contain the complete API, database models,
+migrations, tests, configuration, and deployment configuration.
+
+The frontend repository must contain the complete Next.js application,
+UI, API integration, validation, and frontend tests.
+
+VERCEL
+------
+Deploy the frontend to Vercel.
+
+IMPORTANT:
+Do not assume that SQLite stored on a normal ephemeral serverless filesystem
+is suitable for permanent production persistence.
+
+For a real production deployment, use a persistent hosted database such as
+PostgreSQL, while retaining SQLite compatibility for local development/testing.
+
+If SQLite is specifically required for the first MVP, provide a clearly
+documented deployment mode and do not claim that ephemeral Vercel storage
+provides permanent SQLite persistence.
+
+====================================================
+2. CORE APPLICATION CONCEPT
+====================================================
+
+A USER can create or join a ROOM.
+
+Example:
+
+Room:
+"Bilaspur Flat"
+
+Members:
+- Prem
+- Rahul
+- Aman
+
+Expenses:
+- Rent
+- Electricity
+- Internet
+- Groceries
+- Cleaning
+- Gas
+- Water
+- Personal food
+- Travel
+- Shopping
+
+Every expense has:
+- payer
+- amount
+- date
+- category
+- type
+- participants
+- split method
+- notes
+- optional receipt/image
+- recurring information
+- created/updated metadata
+
+====================================================
+3. USER ROLES
+====================================================
+
+OWNER
+-----
+- Create room
+- Invite members
+- Remove members
+- Edit room settings
+- Manage categories
+- View all room records
+- Export room data
+- Close/archive room
+
+ADMIN (optional)
+---------------
+- Manage members
+- Manage room records
+
+MEMBER
+------
+- Add personal expenses
+- Add common expenses
+- View permitted room information
+- View personal balance
+- Record settlements
+- View history
+
+Do not expose another user's private personal expenses unless the product
+settings explicitly permit it.
+
+====================================================
+4. AUTHENTICATION
+====================================================
+
+Implement secure authentication.
+
+Required:
+- Register
+- Login
+- Logout
+- Password hashing
+- Session/JWT authentication
+- Refresh/session expiration handling
+- Password reset architecture
+- Protected API routes
+- Protected frontend routes
+
+User profile:
+- name
+- email
+- avatar/profile image URL
+- preferred currency
+- timezone
+- theme preference
+- notification preference
+
+Never store plain-text passwords.
+
+====================================================
+5. ROOM CREATION
+====================================================
+
+Create Room screen:
+
+Fields:
+- Room name
+- Description
+- Currency
+- Address/location optional
+- Monthly rent optional
+- Rent due date optional
+- Room start date
+- Room type:
+  - Flat
+  - Hostel
+  - PG
+  - Apartment
+  - Shared House
+  - Other
+
+After creation:
+- Owner becomes first member
+- Generate invite code/link
+- Show room dashboard
+
+====================================================
+6. ROOM JOINING
+====================================================
+
+Join Room:
+
+Methods:
+- Invite code
+- Invite link
+- Optional email invitation
+
+Validation:
+- Invalid invite
+- Expired invite
+- Already joined
+- Room full if limits are configured
+
+====================================================
+7. EXPENSE TYPES
+====================================================
+
+PERSONAL EXPENSE
+----------------
+Example:
+Prem buys headphones for ₹1,500.
+
+It affects:
+Prem's personal spending.
+
+It does NOT create roommate debt.
+
+COMMON EXPENSE
+--------------
+Example:
+Prem pays ₹1,200 for groceries.
+
+Participants:
+Prem
+Rahul
+Aman
+
+Split:
+₹400 each.
+
+Prem paid ₹1,200.
+Prem's share = ₹400.
+Rahul owes Prem ₹400.
+Aman owes Prem ₹400.
+
+====================================================
+8. EXPENSE SPLIT METHODS
+====================================================
+
+EQUAL SPLIT
+-----------
+Amount / number of participants.
+
+Example:
+₹900 / 3 = ₹300 each.
+
+PERCENTAGE SPLIT
+----------------
+Example:
+Prem 50%
+Rahul 30%
+Aman 20%
+
+VALIDATION:
+Total must equal exactly 100%.
+
+CUSTOM AMOUNT SPLIT
+-------------------
+Example:
+Prem ₹500
+Rahul ₹250
+Aman ₹150
+
+Total must equal expense amount.
+
+SHARES / UNITS
+--------------
+Example:
+Prem = 2 shares
+Rahul = 1 share
+Aman = 1 share
+
+₹1,200 / 4 shares = ₹300 per share.
+
+Optional future method:
+- Itemized split
+
+====================================================
+9. FAIR EXPENSE CALCULATION ENGINE
+====================================================
+
+Create a central backend service:
+
+ExpenseSplitService
+
+Input:
+- total amount
+- payer
+- participants
+- split method
+- split configuration
+
+Output:
+- participant share
+- amount owed
+- amount paid
+- net balance
+- settlement suggestions
+
+Example:
+
+Total = ₹1,000
+Payer = Prem
+Participants = Prem, Rahul, Aman
+
+Each share = ₹333.33 except rounding adjustment.
+
+The algorithm must handle currency rounding safely.
+
+Never use floating-point arithmetic for financial calculations.
+
+Use Decimal or integer minor units such as paise.
+
+====================================================
+10. BALANCE ENGINE
+====================================================
+
+For every room calculate:
+
+total room expenses
+total paid by each member
+total personal spending
+total common spending
+member's own share
+member's credit
+member's debt
+net balance
+
+Interpretation:
+
+Positive:
+Member should receive money.
+
+Negative:
+Member owes money.
+
+Zero:
+Settled.
+
+Example:
+
+Prem paid: ₹2,000
+Prem's share: ₹800
+Net: +₹1,200
+
+Rahul paid: ₹500
+Rahul's share: ₹800
+Net: -₹300
+
+Aman paid: ₹0
+Aman's share: ₹900
+Net: -₹900
+
+The dashboard must clearly show:
+"You receive"
+"You owe"
+"Settled"
+
+====================================================
+11. SETTLEMENT SYSTEM
+====================================================
+
+Create Settlement feature.
+
+Example:
+Rahul pays Prem ₹300.
+
+Settlement record:
+- payer = Rahul
+- receiver = Prem
+- amount = ₹300
+- date
+- payment method optional
+- note
+- reference optional
+
+After settlement:
+Rahul's outstanding debt decreases.
+
+Allow:
+- Mark as paid
+- Partial payment
+- Full payment
+- Cancel/reverse settlement
+- Settlement history
+
+Do not delete financial history destructively.
+
+Use soft delete/reversal where appropriate.
+
+====================================================
+12. AUTOMATIC SETTLEMENT SUGGESTIONS
+====================================================
+
+Build a settlement optimizer.
+
+Example:
+
+Prem +₹1,000
+Rahul -₹600
+Aman -₹400
+
+Suggestion:
+
+Rahul → Prem ₹600
+Aman → Prem ₹400
+
+Goal:
+Minimize number of transactions while preserving exact balances.
+
+Show:
+"Suggested settlements"
+
+Allow user to record the suggestion as a real settlement.
+
+====================================================
+13. EXPENSE FREQUENCY
+====================================================
+
+Support:
+
+ONE TIME
+- one-time expense
+
+DAILY
+- repeats every day
+
+WEEKLY
+- repeats every week
+
+MONTHLY
+- repeats every month
+
+YEARLY
+- repeats every year
+
+Optional:
+- custom recurrence
+
+Recurring fields:
+- frequency
+- start date
+- end date optional
+- next occurrence
+- active/inactive
+
+Examples:
+Rent → monthly
+Internet → monthly
+Milk → daily
+Cleaning → weekly
+
+Do not duplicate recurring expenses accidentally.
+
+Use a recurrence engine with deterministic occurrence IDs.
+
+====================================================
+14. RENT MANAGEMENT
+====================================================
+
+Rent module:
+
+Fields:
+- monthly rent
+- due date
+- payer
+- split method
+- members
+- payment status
+
+Statuses:
+- Upcoming
+- Due
+- Paid
+- Partial
+- Overdue
+
+Allow rent to be:
+- equal
+- custom
+- percentage
+
+====================================================
+15. ROOM BILLS
+====================================================
+
+Categories:
+
+Rent
+Electricity
+Water
+Internet
+Gas
+Groceries
+Cleaning
+Maintenance
+Furniture
+Household
+Transport
+Food
+Entertainment
+Other
+
+Admin/owner can create custom categories.
+
+====================================================
+16. PERSONAL EXPENSE TRACKER
+====================================================
+
+Personal dashboard:
+
+Show:
+- today's spending
+- this week
+- this month
+- this year
+- category totals
+- spending trend
+- highest spending category
+- recent transactions
+
+Personal expense fields:
+- amount
+- category
+- date
+- note
+- payment method
+- optional attachment
+
+Personal expenses must not affect roommate settlement unless explicitly
+converted into a common expense.
+
+====================================================
+17. COMMON EXPENSE TRACKER
+====================================================
+
+Room dashboard:
+
+Cards:
+- Total room spending
+- My contribution
+- My share
+- I owe
+- I receive
+- Settled amount
+
+Recent common expenses:
+- expense title
+- amount
+- payer
+- split
+- date
+- status
+
+====================================================
+18. TIME-BASED REPORTING
+====================================================
+
+Provide:
+
+DAY
+----
+Today's expenses.
+
+WEEK
+-----
+Current week's expenses.
+
+MONTH
+------
+Current month's expenses.
+
+YEAR
+-----
+Current year's expenses.
+
+CUSTOM RANGE
+------------
+Date picker.
+
+Reports:
+- total
+- personal
+- common
+- paid
+- owed
+- received
+- category breakdown
+- member breakdown
+
+====================================================
+19. DASHBOARD UI
+====================================================
+
+MAIN DASHBOARD
+--------------
+
+Top navigation:
+- RoomFund logo
+- Room selector
+- Search
+- Notifications
+- Theme toggle
+- Profile menu
+
+Sidebar/Desktop:
+- Dashboard
+- My Expenses
+- Room Expenses
+- Balances
+- Settlements
+- Recurring
+- Reports
+- Members
+- Room Settings
+
+Mobile:
+- Bottom navigation
+- Dashboard
+- Expenses
+- Add
+- Balances
+- Profile
+
+Primary CTA:
+"+ Add Expense"
+
+Quick actions:
+- Personal Expense
+- Common Expense
+- Settlement
+- Add Roommate
+
+====================================================
+20. DASHBOARD CARDS
+====================================================
+
+Card 1:
+MY SPENDING
+
+Card 2:
+ROOM SPENDING
+
+Card 3:
+I OWE
+
+Card 4:
+I RECEIVE
+
+Card 5:
+THIS MONTH
+
+Card 6:
+SETTLED
+
+Use clean visual hierarchy.
+
+Avoid excessive gradients, glassmorphism, or AI-generated-looking UI.
+
+Design must feel like a real financial utility product.
+
+====================================================
+21. EXPENSE ADD UI
+====================================================
+
+Step 1:
+Select:
+- Personal
+- Common
+
+Step 2:
+Enter:
+- Amount
+- Title
+- Category
+- Date
+
+If common:
+- Who paid?
+- Participants
+- Split method
+
+Step 3:
+Review split.
+
+Example:
+
+Total:
+₹1,500
+
+Paid by:
+Prem
+
+Split:
+Equal
+
+Participants:
+Prem
+Rahul
+Aman
+
+Result:
+Prem ₹500
+Rahul ₹500
+Aman ₹500
+
+Step 4:
+Save.
+
+====================================================
+22. EXPENSE DETAIL PAGE
+====================================================
+
+Show:
+
+Title
+Amount
+Type
+Category
+Date
+Payer
+Participants
+Split method
+Individual shares
+Settlement status
+Notes
+Attachment
+Created at
+Updated at
+
+Actions:
+- Edit
+- Duplicate
+- Archive
+- Record settlement if applicable
+
+====================================================
+23. ROOMMATE MANAGEMENT
+====================================================
+
+Members page:
+
+Show:
+- avatar
+- name
+- role
+- joined date
+- total paid
+- total share
+- net balance
+
+Actions:
+- Invite
+- Remove
+- Change role
+- View member summary
+
+====================================================
+24. REPORTS UI
+====================================================
+
+Charts:
+
+1. Spending over time
+2. Category distribution
+3. Member contribution
+4. Personal vs common
+5. Paid vs owed
+6. Monthly trend
+
+Filters:
+- Day
+- Week
+- Month
+- Year
+- Custom range
+
+Export:
+- CSV
+- PDF optional
+
+====================================================
+25. LIGHT MODE
+====================================================
+
+Use a clean financial-product interface.
+
+Suggested palette:
+- Background: near-white
+- Cards: white
+- Primary: deep navy
+- Accent: gold/yellow
+- Success: green
+- Danger: red
+- Text: dark neutral
+- Border: light gray
+
+RoomFund logo:
+Use the approved house + ₹ + roommates concept.
+
+Keep spacing generous.
+
+====================================================
+26. DARK MODE
+====================================================
+
+Suggested:
+- Background: deep navy/charcoal
+- Cards: dark slate
+- Primary: white/light
+- Accent: gold
+- Success: green
+- Danger: red
+- Muted text: gray
+
+Do not simply invert colors.
+
+Ensure:
+- readable contrast
+- accessible focus states
+- clear borders
+- chart readability
+
+Theme:
+- Light
+- Dark
+- System
+
+Persist theme preference.
+
+====================================================
+27. RESPONSIVE DESIGN
+====================================================
+
+Desktop:
+- sidebar
+- multi-column dashboard
+- full tables
+
+Tablet:
+- collapsible navigation
+- responsive cards
+
+Mobile:
+- bottom navigation
+- stacked cards
+- mobile-friendly forms
+- swipe/scroll tables where necessary
+- large touch targets
+
+Minimum target:
+360px wide.
+
+====================================================
+28. DATABASE DESIGN
+====================================================
+
+TABLE: users
+------------
+id
+name
+email
+password_hash
+avatar_url
+currency
+timezone
+theme
+created_at
+updated_at
+deleted_at
+
+TABLE: rooms
+------------
+id
+name
+description
+currency
+owner_id
+invite_code
+start_date
+monthly_rent
+rent_due_day
+created_at
+updated_at
+archived_at
+
+TABLE: room_members
+-------------------
+id
+room_id
+user_id
+role
+joined_at
+status
+
+Unique:
+(room_id, user_id)
+
+TABLE: categories
+-----------------
+id
+room_id nullable
+name
+type
+icon
+created_at
+
+type:
+PERSONAL
+COMMON
+BOTH
+
+TABLE: expenses
+---------------
+id
+room_id nullable
+user_id
+title
+amount_minor
+currency
+expense_type
+category_id
+payer_id
+expense_date
+split_method
+note
+attachment_url
+recurring_id nullable
+created_at
+updated_at
+deleted_at
+
+expense_type:
+PERSONAL
+COMMON
+
+TABLE: expense_participants
+---------------------------
+id
+expense_id
+user_id
+share_amount_minor
+percentage
+shares
+created_at
+
+TABLE: settlements
+------------------
+id
+room_id
+payer_id
+receiver_id
+amount_minor
+currency
+settlement_date
+payment_method
+note
+status
+created_at
+updated_at
+reversed_at
+
+TABLE: recurring_expenses
+--------------------------
+id
+room_id
+created_by
+title
+amount_minor
+expense_type
+category_id
+payer_id
+split_method
+frequency
+interval
+start_date
+end_date
+next_occurrence
+active
+created_at
+updated_at
+
+TABLE: invitations
+------------------
+id
+room_id
+inviter_id
+invite_code
+email nullable
+expires_at
+used_at
+created_at
+
+TABLE: payment_methods
+----------------------
+id
+user_id
+name
+created_at
+
+TABLE: attachments
+------------------
+id
+expense_id
+file_url
+file_name
+mime_type
+size
+created_at
+
+TABLE: audit_logs
+-----------------
+id
+user_id
+room_id
+action
+entity_type
+entity_id
+metadata_json
+created_at
+
+====================================================
+29. DATABASE RULES
+====================================================
+
+- Foreign keys ON
+- Proper cascading behavior
+- No orphaned participants
+- Monetary values stored as integer minor units
+- Unique constraints
+- Index room_id
+- Index user_id
+- Index expense_date
+- Index payer_id
+- Index settlement dates
+- Index recurring next_occurrence
+- Soft delete financial records where appropriate
+
+Never store money as floating point.
+
+====================================================
+30. API DESIGN
+====================================================
+
+AUTH
+----
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+POST /api/auth/refresh
+GET  /api/auth/me
+POST /api/auth/forgot-password
+POST /api/auth/reset-password
+
+ROOMS
+-----
+GET    /api/rooms
+POST   /api/rooms
+GET    /api/rooms/{room_id}
+PATCH  /api/rooms/{room_id}
+DELETE /api/rooms/{room_id}
+
+MEMBERS
+-------
+GET    /api/rooms/{room_id}/members
+POST   /api/rooms/{room_id}/members/invite
+POST   /api/rooms/{room_id}/join
+PATCH  /api/rooms/{room_id}/members/{member_id}
+DELETE /api/rooms/{room_id}/members/{member_id}
+
+EXPENSES
+--------
+GET    /api/rooms/{room_id}/expenses
+POST   /api/rooms/{room_id}/expenses
+GET    /api/expenses/{expense_id}
+PATCH  /api/expenses/{expense_id}
+DELETE /api/expenses/{expense_id}
+
+PERSONAL
+--------
+GET  /api/me/expenses
+POST /api/me/expenses
+
+BALANCES
+--------
+GET /api/rooms/{room_id}/balances
+GET /api/rooms/{room_id}/settlement-suggestions
+
+SETTLEMENTS
+-----------
+GET  /api/rooms/{room_id}/settlements
+POST /api/rooms/{room_id}/settlements
+PATCH /api/settlements/{settlement_id}
+POST /api/settlements/{settlement_id}/reverse
+
+RECURRING
+---------
+GET    /api/rooms/{room_id}/recurring
+POST   /api/rooms/{room_id}/recurring
+PATCH  /api/recurring/{id}
+DELETE /api/recurring/{id}
+
+REPORTS
+-------
+GET /api/rooms/{room_id}/reports
+GET /api/rooms/{room_id}/reports/monthly
+GET /api/rooms/{room_id}/reports/category
+GET /api/rooms/{room_id}/reports/member
+
+====================================================
+31. API SECURITY
+====================================================
+
+Every protected endpoint must verify:
+- authenticated user
+- room membership
+- correct ownership/role
+- resource permissions
+
+Prevent:
+- IDOR
+- unauthorized room access
+- unauthorized expense editing
+- mass assignment
+- SQL injection
+- XSS
+- CSRF where applicable
+- insecure file upload
+- password exposure
+
+Never trust room_id supplied by frontend without authorization checking.
+
+====================================================
+32. VALIDATION
+====================================================
+
+Amount:
+- > 0
+- maximum configured value
+
+Split:
+- equal split must match total
+- percentage must equal 100%
+- custom amounts must equal total
+- shares must be > 0
+
+Settlement:
+- payer != receiver
+- amount > 0
+- cannot exceed allowed outstanding amount unless explicitly permitted
+
+Dates:
+- valid ISO dates
+- recurring end date cannot precede start date
+
+Email:
+- valid format
+
+Room:
+- name required
+- reasonable length limits
+
+====================================================
+33. ERROR HANDLING
+====================================================
+
+Frontend must display friendly messages.
+
+Examples:
+
+"Unable to load expenses."
+"Expense amount is invalid."
+"Split amounts do not equal the total."
+"You are not a member of this room."
+"Session expired. Please log in again."
+
+Backend returns consistent JSON:
+
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Split total does not match expense amount.",
+    "details": {}
+  }
+}
+
+Do not leak stack traces in production.
+
+====================================================
+34. LOADING STATES
+====================================================
+
+Implement:
+- skeleton loaders
+- button loading states
+- page loading states
+- optimistic UI only where safe
+- disabled duplicate-submit prevention
+
+====================================================
+35. EMPTY STATES
+====================================================
+
+Examples:
+
+No room:
+"Create or join a room to start tracking shared expenses."
+
+No expenses:
+"No expenses recorded yet."
+
+No balance:
+"You're all settled up."
+
+No settlements:
+"No settlements yet."
+
+====================================================
+36. SEARCH AND FILTER
+====================================================
+
+Expense search:
+- title
+- category
+- payer
+
+Filters:
+- personal/common
+- member
+- category
+- date
+- amount range
+- paid/unpaid
+
+Sort:
+- newest
+- oldest
+- highest
+- lowest
+
+====================================================
+37. NOTIFICATIONS
+====================================================
+
+Optional MVP notifications:
+
+- New roommate joined
+- Expense added
+- You owe money
+- Someone owes you
+- Settlement recorded
+- Recurring expense created
+
+Notification center:
+- unread/read
+- timestamp
+- action link
+
+====================================================
+38. DATA EXPORT
+====================================================
+
+Allow room owner/member to export permitted data.
+
+CSV:
+- date
+- title
+- type
+- category
+- payer
+- amount
+- participants
+- split
+
+Optional PDF summary.
+
+====================================================
+39. BACKUP / RESTORE
+====================================================
+
+For local development:
+- SQLite backup command
+- database export
+
+For production:
+- use managed persistent DB
+- automated backup strategy
+- documented restore process
+
+Never rely on GitHub commits as the only database backup.
+
+====================================================
+40. FRONTEND PROJECT STRUCTURE
+====================================================
+
+Recommended:
+
+app/
+  (auth)/
+    login/
+    register/
+  dashboard/
+  rooms/
+  expenses/
+  balances/
+  settlements/
+  recurring/
+  reports/
+  settings/
+
+components/
+  ui/
+  layout/
+  dashboard/
+  expenses/
+  rooms/
+  balances/
+  charts/
+
+lib/
+  api/
+  auth/
+  validation/
+  formatters/
+  calculations/
+
+hooks/
+types/
+constants/
+tests/
+
+====================================================
+41. BACKEND PROJECT STRUCTURE
+====================================================
+
+app/
+  main.py
+  core/
+    config.py
+    security.py
+    database.py
+  models/
+  schemas/
+  api/
+    auth.py
+    rooms.py
+    members.py
+    expenses.py
+    balances.py
+    settlements.py
+    recurring.py
+    reports.py
+  services/
+    expense_split_service.py
+    balance_service.py
+    settlement_service.py
+    recurring_service.py
+  repositories/
+  utils/
+
+alembic/
+tests/
+requirements.txt
+.env.example
+Dockerfile
+README.md
+
+====================================================
+42. TESTING REQUIREMENTS
+====================================================
+
+BACKEND UNIT TESTS
+------------------
+Test:
+- equal split
+- percentage split
+- custom split
+- shares split
+- rounding
+- zero/invalid amount
+- participant validation
+- balance calculation
+- settlement calculation
+- settlement reversal
+- recurring dates
+
+BACKEND API TESTS
+-----------------
+Test:
+- registration
+- login
+- authentication
+- unauthorized requests
+- room creation
+- joining
+- expense creation
+- expense editing
+- expense deletion/archive
+- settlement
+- reports
+
+DATABASE TESTS
+--------------
+Test:
+- foreign keys
+- unique room membership
+- cascading behavior
+- migrations
+- data persistence
+- rollback behavior
+
+FRONTEND TESTS
+--------------
+Test:
+- login form
+- add expense form
+- split calculator
+- dashboard
+- filters
+- theme switch
+- validation messages
+- responsive critical flows
+
+E2E TESTS
+---------
+Recommended:
+Playwright
+
+Critical E2E:
+
+1. Register
+2. Create room
+3. Invite/join roommate
+4. Add common expense
+5. Equal split
+6. Verify balances
+7. Add settlement
+8. Verify balance changes
+9. Add personal expense
+10. Verify personal expense does not affect roommate balance
+11. Create recurring expense
+12. Change theme
+13. Logout/login
+14. Verify database persistence
+
+====================================================
+43. TEST DATA
+====================================================
+
+Create seed data for development:
+
+Users:
+Prem
+Rahul
+Aman
+
+Room:
+Bilaspur Shared Flat
+
+Expenses:
+Rent ₹9,000
+Electricity ₹1,500
+Internet ₹799
+Groceries ₹2,400
+Cleaning ₹600
+
+Use deterministic IDs in test fixtures where useful.
+
+====================================================
+44. CI/CD
+====================================================
+
+GitHub Actions:
+
+On push:
+- install dependencies
+- lint
+- type check
+- unit tests
+- integration tests
+- build frontend
+- build backend
+- migration verification
+
+On pull request:
+- run complete test suite
+
+Do not allow known failing tests to be treated as success.
+
+====================================================
+45. ENVIRONMENT VARIABLES
+====================================================
+
+Frontend:
+NEXT_PUBLIC_API_URL
+
+Backend:
+DATABASE_URL
+SECRET_KEY
+JWT_SECRET
+CORS_ORIGINS
+ENVIRONMENT
+ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS
+
+Never commit:
+.env
+secret keys
+passwords
+production credentials
+database credentials
+
+Provide:
+.env.example
+
+====================================================
+46. VERCEL DEPLOYMENT
+====================================================
+
+Frontend:
+Deploy Next.js frontend to Vercel.
+
+Set:
+NEXT_PUBLIC_API_URL
+
+Backend:
+Do not assume FastAPI can simply run as a permanent SQLite server on Vercel.
+
+Recommended architecture:
+
+User
+ |
+ V
+Vercel
+ |
+Next.js frontend
+ |
+HTTPS API
+ |
+FastAPI backend
+ |
+Persistent PostgreSQL database
+
+For MVP/local:
+FastAPI + SQLite
+
+For production:
+FastAPI + PostgreSQL
+
+If using a serverless backend provider, verify its runtime, filesystem,
+connection pooling, and database persistence before deployment.
+
+====================================================
+47. CORS
+====================================================
+
+Backend must allow only configured frontend origins.
+
+Development:
+localhost origins.
+
+Production:
+exact Vercel frontend URL.
+
+Do not use "*" for authenticated production APIs unless there is a specific
+security-reviewed reason.
+
+====================================================
+48. UI ACCESSIBILITY
+====================================================
+
+Must support:
+- keyboard navigation
+- visible focus
+- semantic labels
+- sufficient contrast
+- accessible modal behavior
+- accessible form errors
+- screen-reader friendly buttons
+- touch-friendly controls
+
+Do not rely on color alone to communicate financial status.
+
+Use icons + labels.
+
+====================================================
+49. PERFORMANCE
+====================================================
+
+Frontend:
+- lazy-load heavy charts
+- pagination
+- server/client caching appropriately
+- avoid unnecessary rerenders
+- optimized images
+- debounce search
+- virtualize very large tables if needed
+
+Backend:
+- indexed queries
+- pagination
+- avoid N+1 queries
+- efficient aggregation
+- transaction-safe updates
+
+====================================================
+50. DATA CONSISTENCY
+====================================================
+
+When creating a common expense:
+
+1. Validate room membership.
+2. Validate payer.
+3. Validate participants.
+4. Validate split.
+5. Create expense.
+6. Create participant shares.
+7. Update/derive balances.
+8. Commit transaction.
+
+If any operation fails:
+ROLLBACK.
+
+Do not leave partially created expense records.
+
+====================================================
+51. FINANCIAL CALCULATION EXAMPLE
+====================================================
+
+Expense:
+₹1,000
+
+Participants:
+3
+
+Exact arithmetic:
+₹333.33
+₹333.33
+₹333.34
+
+The system must assign the rounding remainder deterministically.
+
+Never show:
+₹333.33 × 3 = ₹999.99
+
+The final participant shares must total exactly ₹1,000.
+
+====================================================
+52. PERSONAL VS COMMON EXAMPLE
+====================================================
+
+Prem:
+Personal phone recharge ₹299.
+
+Common:
+Prem pays electricity ₹1,500.
+
+Roommates:
+Prem
+Rahul
+Aman
+
+Equal split:
+₹500 each.
+
+Result:
+Prem paid ₹1,500 and owes/share is ₹500.
+Prem net = +₹1,000.
+
+Rahul = -₹500.
+Aman = -₹500.
+
+Personal ₹299 is excluded from room balance.
+
+====================================================
+53. ROOM CLOSE / ARCHIVE
+====================================================
+
+Allow room owner to archive a room.
+
+Archived room:
+- read-only by default
+- historical reports remain available
+- no new expenses
+- settlement history preserved
+
+Do not permanently delete financial history without an explicit,
+well-designed data deletion policy.
+
+====================================================
+54. USER SETTINGS
+====================================================
+
+Settings:
+
+Profile
+Security
+Currency
+Timezone
+Theme
+Notifications
+Default expense category
+Default split method
+Privacy
+Data export
+
+====================================================
+55. DESIGN SYSTEM
+====================================================
+
+Use consistent:
+
+- border radius
+- spacing
+- typography
+- shadows
+- button sizes
+- form controls
+- badges
+- tables
+- modals
+- toast notifications
+
+Primary brand:
+RoomFund
+
+Logo concept:
+House + rupee + shared roommates.
+
+Do not use the word "AI" anywhere in the product branding.
+
+Avoid overly complicated visual effects.
+
+====================================================
+56. BRANDING
+====================================================
+
+Name:
+RoomFund
+
+Suggested colors:
+Navy + Gold
+
+Brand meaning:
+Room = shared living
+Fund = shared money management
+
+Tone:
+- trustworthy
+- simple
+- student-friendly
+- professional
+- transparent
+
+====================================================
+57. SECURITY CHECKLIST
+====================================================
+
+Before release verify:
+
+[ ] Passwords hashed
+[ ] JWT/session secure
+[ ] Secrets not committed
+[ ] CORS restricted
+[ ] SQL injection protected
+[ ] Input validation
+[ ] Authorization checks
+[ ] Rate limiting where appropriate
+[ ] Secure file uploads
+[ ] MIME validation
+[ ] File size limits
+[ ] No sensitive data in logs
+[ ] HTTPS in production
+[ ] Error messages safe
+[ ] Dependency audit
+
+====================================================
+58. DATABASE MIGRATION WORKFLOW
+====================================================
+
+Local:
+
+1. Change SQLAlchemy model.
+2. Generate Alembic migration.
+3. Review migration.
+4. Run migration.
+5. Run tests.
+
+Never manually modify production database schema without migration tracking.
+
+====================================================
+59. README REQUIREMENTS
+====================================================
+
+README must include:
+
+- Project overview
+- Features
+- Architecture
+- Tech stack
+- Local setup
+- Environment variables
+- Database setup
+- Migration commands
+- Test commands
+- Frontend setup
+- Backend setup
+- Deployment
+- Vercel setup
+- Production database setup
+- Troubleshooting
+- API documentation
+- Security notes
+
+====================================================
+60. API DOCUMENTATION
+====================================================
+
+FastAPI OpenAPI documentation:
+
+/docs
+/redoc
+
+Every endpoint should have:
+- description
+- request schema
+- response schema
+- error responses
+- authentication requirement
+
+====================================================
+61. DEVELOPMENT COMMANDS
+====================================================
+
+Frontend example:
+
+npm install
+npm run dev
+npm run lint
+npm run type-check
+npm run test
+npm run build
+
+Backend example:
+
+python -m venv .venv
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload
+
+Tests:
+
+pytest
+
+====================================================
+62. ACCEPTANCE CRITERIA
+====================================================
+
+The project is NOT complete until:
+
+[ ] User can register/login.
+[ ] User can create room.
+[ ] User can invite/join roommates.
+[ ] User can add personal expense.
+[ ] User can add common expense.
+[ ] User can choose participants.
+[ ] Equal split works.
+[ ] Percentage split works.
+[ ] Custom split works.
+[ ] Shares split works.
+[ ] Rounding is exact.
+[ ] Balances are correct.
+[ ] Settlement works.
+[ ] Settlement reversal works.
+[ ] Recurring expenses work.
+[ ] Day/week/month/year filters work.
+[ ] Personal dashboard works.
+[ ] Room dashboard works.
+[ ] Reports work.
+[ ] Light mode works.
+[ ] Dark mode works.
+[ ] Responsive UI works.
+[ ] SQLite persistence works locally.
+[ ] Migrations work.
+[ ] API tests pass.
+[ ] Database tests pass.
+[ ] Frontend tests pass.
+[ ] E2E critical flow passes.
+[ ] GitHub repository is organized.
+[ ] GitHub Actions CI passes.
+[ ] Frontend builds successfully.
+[ ] Vercel deployment configuration works.
+[ ] Production persistence strategy is documented.
+[ ] No secrets are committed.
+[ ] README is complete.
+
+====================================================
+63. AI CODING AGENT WORKFLOW
+====================================================
+
+The coding agent must NOT attempt to build everything blindly in one pass.
+
+Follow phases.
+
+PHASE 1 — ANALYSIS
+------------------
+Read this entire specification.
+
+Create:
+- PROJECT_STATUS.md
+- ARCHITECTURE.md
+- DATABASE.md
+- API.md
+- TEST_PLAN.md
+- TODO.md
+
+Do not start coding until architecture is understood.
+
+PHASE 2 — SCAFFOLD
+------------------
+Create:
+- frontend
+- backend
+- database
+- test structure
+- environment templates
+- GitHub configuration
+
+PHASE 3 — DATABASE
+------------------
+Implement:
+- models
+- relationships
+- indexes
+- migrations
+- seed data
+- database tests
+
+PHASE 4 — BACKEND
+-----------------
+Implement:
+- authentication
+- rooms
+- members
+- expenses
+- split engine
+- balances
+- settlements
+- recurring expenses
+- reports
+
+PHASE 5 — FRONTEND
+------------------
+Implement:
+- layout
+- theme
+- auth
+- dashboard
+- expense flows
+- balance UI
+- settlement UI
+- recurring UI
+- reports
+- settings
+
+PHASE 6 — INTEGRATION
+---------------------
+Connect frontend to backend.
+
+Verify:
+- auth
+- CRUD
+- balances
+- settlements
+- filters
+- reports
+
+PHASE 7 — TESTING
+-----------------
+Run:
+- lint
+- typecheck
+- unit tests
+- integration tests
+- database tests
+- E2E tests
+- production build
+
+PHASE 8 — SECURITY REVIEW
+-------------------------
+Review:
+- authentication
+- authorization
+- validation
+- secrets
+- CORS
+- file uploads
+- database queries
+
+PHASE 9 — DEPLOYMENT
+--------------------
+Prepare:
+- GitHub
+- CI/CD
+- backend hosting
+- persistent production DB
+- Vercel frontend
+- environment variables
+
+PHASE 10 — FINAL SELF-CHECK
+---------------------------
+Do not claim completion until every acceptance criterion is checked.
+
+====================================================
+64. SELF-CHECK FORMAT
+====================================================
+
+At the end, generate:
+
+PROJECT HEALTH REPORT
+
+Frontend:
+PASS/FAIL
+
+Backend:
+PASS/FAIL
+
+Database:
+PASS/FAIL
+
+Authentication:
+PASS/FAIL
+
+Expense engine:
+PASS/FAIL
+
+Balance engine:
+PASS/FAIL
+
+Settlement engine:
+PASS/FAIL
+
+Recurring engine:
+PASS/FAIL
+
+Light mode:
+PASS/FAIL
+
+Dark mode:
+PASS/FAIL
+
+Responsive:
+PASS/FAIL
+
+Tests:
+PASS/FAIL
+
+Build:
+PASS/FAIL
+
+Deployment:
+PASS/FAIL
+
+Security:
+PASS/FAIL
+
+Documentation:
+PASS/FAIL
+
+Known issues:
+- ...
+
+Remaining work:
+- ...
+
+Do not hide failed tests.
+
+====================================================
+65. IMPORTANT DEVELOPMENT RULES
+====================================================
+
+1. Do not invent undocumented business behavior.
+2. Keep financial calculations deterministic.
+3. Do not use floating-point money calculations.
+4. Do not bypass backend validation.
+5. Do not trust frontend balances.
+6. Backend must calculate authoritative balances.
+7. Keep API and database logic separated.
+8. Use migrations.
+9. Write tests before declaring modules complete.
+10. Do not remove tests just to make CI pass.
+11. Do not commit secrets.
+12. Do not hard-code production URLs.
+13. Keep environment-specific configuration separate.
+14. Preserve historical financial records.
+15. Make destructive actions explicit.
+16. Keep UI simple and professional.
+17. Use reusable components.
+18. Avoid duplicate business logic between frontend and backend.
+19. Use TypeScript types for API contracts.
+20. Document every important architectural decision.
+
+====================================================
+66. FINAL DELIVERABLE
+====================================================
+
+The final project should contain:
+
+ROOMFUND
+|
++-- frontend/
+|   +-- Next.js application
+|   +-- responsive UI
+|   +-- light/dark mode
+|   +-- API integration
+|   +-- tests
+|
++-- backend/
+|   +-- FastAPI
+|   +-- SQLAlchemy
+|   +-- Alembic
+|   +-- SQLite development database
+|   +-- PostgreSQL production support
+|   +-- tests
+|
++-- docs/
+|   +-- architecture
+|   +-- database
+|   +-- API
+|   +-- deployment
+|
++-- .github/
+|   +-- workflows/
+|
++-- README.md
++-- .env.example
+
+FINAL GOAL
+----------
+RoomFund must feel like a real, reliable shared-expense product rather than
+a basic CRUD demo.
+
+A new user should be able to:
+
+1. Sign up.
+2. Create a room.
+3. Invite roommates.
+4. Add personal expenses.
+5. Add common expenses.
+6. Split expenses fairly.
+7. See who owes whom.
+8. Record settlements.
+9. Track recurring costs.
+10. View day/week/month/year reports.
+11. Switch between light and dark mode.
+12. Return later and see all data persisted correctly.
+
+The system must remain maintainable, testable, secure, and ready for future
+PostgreSQL/cloud scaling.

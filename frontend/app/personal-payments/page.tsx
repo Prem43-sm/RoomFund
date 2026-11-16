@@ -1,0 +1,8 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+const api = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+type Payment = { id: string; title: string; amount_minor: number; expense_date: string; note?: string };
+const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(value / 100);
+export default function PersonalPayments() { const router = useRouter(); const [items, setItems] = useState<Payment[]>([]); const [error, setError] = useState(""); useEffect(() => { const token = localStorage.getItem("roomfund_access_token"); if (!token) { router.replace("/login"); return; } fetch(`${api}/api/personal-payments`, { headers: { Authorization: `Bearer ${token}` } }).then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.detail || "Unable to load personal payments"); return data; }).then(setItems).catch(e => setError(e.message)); }, [router]); return <main className="simple-page"><Link className="brand" href="/dashboard">← RoomFund</Link><p className="eyebrow">🔒 PRIVATE</p><h1>Personal payments</h1><p className="muted">Only you can see these records. They never affect shared balances or reports.</p>{error && <p className="error">{error}</p>}<section className="panel">{items.length ? <div className="list">{items.map(item => <div className="row" key={item.id}><div><strong>{item.title}</strong><small>{item.expense_date}{item.note ? ` · ${item.note}` : ""}</small></div><strong>{money(item.amount_minor)}</strong></div>)}</div> : <div className="empty"><h2>No personal payments yet.</h2><p>Your private records will appear here.</p></div>}</section></main>; }
